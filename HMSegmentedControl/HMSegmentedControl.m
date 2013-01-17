@@ -52,6 +52,8 @@
     self.selectionIndicatorHeight = 5.0f;
     self.selectionIndicatorMode = HMSelectionIndicatorResizesToStringWidth;
     
+	self.segmentAtTop = YES;
+	
     self.selectedSegmentLayer = [CALayer layer];
 }
 
@@ -107,9 +109,12 @@
         CGFloat widthToStartOfSelectedIndex = (self.segmentWidth * self.selectedSegmentIndex);
         
         CGFloat x = ((widthToEndOfSelectedSegment - widthToStartOfSelectedIndex) / 2) + (widthToStartOfSelectedIndex - stringWidth / 2);
-        return CGRectMake(x, 0.0, stringWidth, self.selectionIndicatorHeight);
+        return CGRectMake(x, self.segmentAtTop ? 0.0 : self.bounds.size.height - self.selectionIndicatorHeight,
+						  stringWidth, self.selectionIndicatorHeight);
     } else {
-        return CGRectMake(self.segmentWidth * self.selectedSegmentIndex, 0.0, self.segmentWidth, self.selectionIndicatorHeight);
+        return CGRectMake(self.segmentWidth * self.selectedSegmentIndex,
+						  self.segmentAtTop ? 0.0 : self.bounds.size.height - self.selectionIndicatorHeight,
+						  self.segmentWidth, self.selectionIndicatorHeight);
     }
 }
 

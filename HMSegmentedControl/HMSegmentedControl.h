@@ -33,6 +33,8 @@ enum {
 @property (nonatomic, readwrite) CGFloat selectionIndicatorHeight; // default is 5.0
 @property (nonatomic, readwrite) UIEdgeInsets segmentEdgeInset; // default is UIEdgeInsetsMake(0, 5, 0, 5)
 
+@property (nonatomic,assign) BOOL segmentAtTop;
+
 - (id)initWithSectionTitles:(NSArray *)sectiontitles;
 - (void)setSelectedSegmentIndex:(NSUInteger)index animated:(BOOL)animated;
 
