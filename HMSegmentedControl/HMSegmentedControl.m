@@ -13,6 +13,8 @@
 
 @property (nonatomic, strong) CALayer *selectedSegmentLayer;
 @property (nonatomic, readwrite) CGFloat segmentWidth;
+@property (nonatomic, strong) NSArray* segmentWidths;
+@property (nonatomic, strong) NSArray* segmentOffsets;
 
 @end
 
@@ -53,6 +55,7 @@
     self.selectionIndicatorMode = HMSelectionIndicatorResizesToStringWidth;
     
 	self.segmentAtTop = YES;
+	self.proportionalSegments = NO;
 	
     self.selectedSegmentLayer = [CALayer layer];
 }
@@ -78,7 +81,14 @@
     [self.sectionTitles enumerateObjectsUsingBlock:^(id titleString, NSUInteger idx, BOOL *stop) {
         CGFloat stringHeight = [titleString sizeWithFont:self.font].height;
         CGFloat y = ((self.height - self.selectionIndicatorHeight) / 2) + (self.selectionIndicatorHeight - stringHeight / 2);
-        CGRect rect = CGRectMake(self.segmentWidth * idx, y, self.segmentWidth, stringHeight);
+		CGRect rect;
+		if (self.proportionalSegments) {
+			NSNumber *segmentWidthNum = [self.segmentWidths objectAtIndex:idx];
+			NSNumber *segmentOffsetNum = [self.segmentOffsets objectAtIndex:idx];
+			rect = CGRectMake([segmentOffsetNum floatValue], y, [segmentWidthNum floatValue], stringHeight);
+		} else {
+			rect = CGRectMake(self.segmentWidth * idx, y, self.segmentWidth, stringHeight);
+		}
         
 #if __IPHONE_OS_VERSION_MIN_REQUIRED < 60000
         [titleString drawInRect:rect
@@ -103,36 +113,93 @@
 
 - (CGRect)frameForSelectionIndicator {
     CGFloat stringWidth = [[self.sectionTitles objectAtIndex:self.selectedSegmentIndex] sizeWithFont:self.font].width;
-    
-    if (self.selectionIndicatorMode == HMSelectionIndicatorResizesToStringWidth && stringWidth <= self.segmentWidth) {
-        CGFloat widthToEndOfSelectedSegment = (self.segmentWidth * self.selectedSegmentIndex) + self.segmentWidth;
-        CGFloat widthToStartOfSelectedIndex = (self.segmentWidth * self.selectedSegmentIndex);
+    CGFloat segmentWidth;
+    CGFloat segmentOffset;
+	if (self.proportionalSegments) {
+		NSNumber *segmentWidthNum = [self.segmentWidths objectAtIndex:self.selectedSegmentIndex];
+		NSNumber *segmentOffsetNum = [self.segmentOffsets objectAtIndex:self.selectedSegmentIndex];
+		segmentWidth = [segmentWidthNum floatValue];
+		segmentOffset = [segmentOffsetNum floatValue];
+	} else {
+		segmentWidth = self.segmentWidth;
+		segmentOffset = segmentWidth * self.selectedSegmentIndex;
+	}
+	
+    if (self.selectionIndicatorMode == HMSelectionIndicatorResizesToStringWidth && stringWidth <= segmentWidth) {
+        CGFloat widthToEndOfSelectedSegment = segmentOffset + segmentWidth;
+        CGFloat widthToStartOfSelectedIndex = segmentOffset;
         
         CGFloat x = ((widthToEndOfSelectedSegment - widthToStartOfSelectedIndex) / 2) + (widthToStartOfSelectedIndex - stringWidth / 2);
         return CGRectMake(x, self.segmentAtTop ? 0.0 : self.bounds.size.height - self.selectionIndicatorHeight,
 						  stringWidth, self.selectionIndicatorHeight);
     } else {
-        return CGRectMake(self.segmentWidth * self.selectedSegmentIndex,
+        return CGRectMake(segmentOffset,
 						  self.segmentAtTop ? 0.0 : self.bounds.size.height - self.selectionIndicatorHeight,
-						  self.segmentWidth, self.selectionIndicatorHeight);
+						  segmentWidth, self.selectionIndicatorHeight);
     }
 }
 
 - (void)updateSegmentsRects {
-    // If there's no frame set, calculate the width of the control based on the number of segments and their size
-    if (CGRectIsEmpty(self.frame)) {
-        self.segmentWidth = 0;
-        
-        for (NSString *titleString in self.sectionTitles) {
-            CGFloat stringWidth = [titleString sizeWithFont:self.font].width + self.segmentEdgeInset.left + self.segmentEdgeInset.right;
-            self.segmentWidth = MAX(stringWidth, self.segmentWidth);
-        }
-        
-        self.bounds = CGRectMake(0, 0, self.segmentWidth * self.sectionTitles.count, self.height);
-    } else {
-        self.segmentWidth = self.frame.size.width / self.sectionTitles.count;
-        self.height = self.frame.size.height;
-    }
+	if (self.proportionalSegments) {
+		// If there's no frame set, calculate the width of the control based on the number of segments and their size
+		NSMutableArray* stringWidths = [NSMutableArray array];
+		CGFloat totalStringWidth = 0.0f;
+		for (NSString *titleString in self.sectionTitles) {
+			CGFloat stringWidth = [titleString sizeWithFont:self.font].width + self.segmentEdgeInset.left + self.segmentEdgeInset.right;
+			[stringWidths addObject:[NSNumber numberWithFloat:stringWidth]];
+			totalStringWidth += stringWidth;
+		}
+		if (CGRectIsEmpty(self.frame)) {
+			NSMutableArray* segmentOffsets = [NSMutableArray array];
+			CGFloat offset = 0.0f;
+			for (NSNumber* stringWidthNum in stringWidths) {
+				[segmentOffsets addObject:[NSNumber numberWithFloat:offset]];
+				offset += [stringWidthNum floatValue];
+			}
+			self.segmentWidths = [NSArray arrayWithArray:stringWidths];
+			self.segmentOffsets = [NSArray arrayWithArray:segmentOffsets];
+			self.bounds = CGRectMake(0, 0, totalStringWidth, self.height);
+		} else {
+			NSMutableArray* segmentWidths = [NSMutableArray array];
+			NSMutableArray* segmentOffsets = [NSMutableArray array];
+			CGFloat wd = self.frame.size.width;
+			CGFloat padAvail = wd - totalStringWidth;
+			CGFloat factor;
+			CGFloat offset;
+			if (padAvail >= 0.0f) {
+				factor = padAvail / ((2.0f * stringWidths.count) + 2.0f);
+				offset = factor;
+			} else {
+				offset = 2.0f;
+				padAvail -= 4.0f;
+				factor = padAvail / (2.0f * stringWidths.count);
+			}
+			for (NSNumber* stringWidthNum in stringWidths) {
+				CGFloat segmentWidth = [stringWidthNum floatValue] + (factor * 2.0f);
+				[segmentWidths addObject:[NSNumber numberWithFloat:segmentWidth]];
+				[segmentOffsets addObject:[NSNumber numberWithFloat:offset]];
+				offset += segmentWidth;
+			}
+			self.segmentWidths = [NSArray arrayWithArray:segmentWidths];
+			self.segmentOffsets = [NSArray arrayWithArray:segmentOffsets];
+			self.height = self.frame.size.height;
+		}
+	} else {
+		// If there's no frame set, calculate the width of the control based on the number of segments and their size
+		if (CGRectIsEmpty(self.frame)) {
+			self.segmentWidth = 0;
+			
+			for (NSString *titleString in self.sectionTitles) {
+				CGFloat stringWidth = [titleString sizeWithFont:self.font].width + self.segmentEdgeInset.left + self.segmentEdgeInset.right;
+				self.segmentWidth = MAX(stringWidth, self.segmentWidth);
+			}
+			
+			self.bounds = CGRectMake(0, 0, self.segmentWidth * self.sectionTitles.count, self.height);
+		} else {
+			self.segmentWidth = self.frame.size.width / self.sectionTitles.count;
+			self.height = self.frame.size.height;
+		}
+	}
 }
 
 - (void)willMoveToSuperview:(UIView *)newSuperview {
@@ -150,7 +217,24 @@
     CGPoint touchLocation = [touch locationInView:self];
     
     if (CGRectContainsPoint(self.bounds, touchLocation)) {
-        NSInteger segment = touchLocation.x / self.segmentWidth;
+        NSInteger segment;
+		if (self.proportionalSegments) {
+			NSEnumerator* segmentWidthEnum = [self.segmentWidths objectEnumerator];
+			NSEnumerator* segmentOffsetEnum = [self.segmentOffsets objectEnumerator];
+			NSNumber* segmentWidthNum;
+			NSNumber* segmentOffsetNum;
+			segment = 0;
+			while ((segmentWidthNum = [segmentWidthEnum nextObject]) && (segmentOffsetNum = [segmentOffsetEnum nextObject])) {
+				CGFloat segmentWidth = [segmentWidthNum floatValue];
+				CGFloat segmentOffset = [segmentOffsetNum floatValue];
+				if ((touchLocation.x >= segmentOffset) && (touchLocation.x <= (segmentOffset + segmentWidth))) {
+					break;
+				}
+				segment++;
+			}
+		} else {
+			segment = touchLocation.x / self.segmentWidth;
+		}
         
         if (segment != self.selectedSegmentIndex) {
             [self setSelectedSegmentIndex:segment animated:YES];

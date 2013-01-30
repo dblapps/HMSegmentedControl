@@ -24,10 +24,13 @@
     [segmentedControl setFrame:CGRectMake(10, 10, 300, 60)];
     [segmentedControl addTarget:self action:@selector(segmentedControlChangedValue:) forControlEvents:UIControlEventValueChanged];
     [segmentedControl setTag:1];
+	segmentedControl.segmentAtTop = NO;
+	segmentedControl.proportionalSegments = YES;
     [segmentedControl setSelectedSegmentIndex:HMSegmentedControlNoSegment];
     [self.view addSubview:segmentedControl];
 
     HMSegmentedControl *segmentedControl2 = [[HMSegmentedControl alloc] initWithSectionTitles:@[@"One", @"Two", @"Three", @"4", @"Five"]];
+	segmentedControl2.segmentAtTop = NO;
     [segmentedControl2 setIndexChangeBlock:^(NSUInteger index) {
         NSLog(@"Selected index %i (via block)", index);
     }];
@@ -43,6 +46,7 @@
     [self.view addSubview:segmentedControl2];
     
     HMSegmentedControl *segmentedControl3 = [[HMSegmentedControl alloc] initWithFrame:CGRectMake(10, 200, 300, 50)];
+	segmentedControl3.segmentAtTop = NO;
     [segmentedControl3 setSectionTitles:@[@"Worldwide", @"Local", @"Headlines"]];
     [segmentedControl3 setSelectedSegmentIndex:1];
     [segmentedControl3 setBackgroundColor:[UIColor lightGrayColor]];
@@ -50,6 +54,17 @@
     [segmentedControl3 setSelectionIndicatorColor:[UIColor blackColor]];
     [segmentedControl3 setTag:3];
     [self.view addSubview:segmentedControl3];    
+
+    HMSegmentedControl *segmentedControl4 = [[HMSegmentedControl alloc] initWithSectionTitles:@[@"Short", @"LongWordyStuffHere", @"Small"]];
+    [segmentedControl4 setBackgroundColor:[UIColor lightGrayColor]];
+    [segmentedControl4 setSelectionIndicatorMode:HMSelectionIndicatorResizesToStringWidth];
+    [segmentedControl4 setFrame:CGRectMake(10, 300, 300, 60)];
+    [segmentedControl4 addTarget:self action:@selector(segmentedControlChangedValue:) forControlEvents:UIControlEventValueChanged];
+    [segmentedControl4 setTag:1];
+	segmentedControl4.segmentAtTop = NO;
+	segmentedControl4.proportionalSegments = YES;
+    [segmentedControl4 setSelectedSegmentIndex:HMSegmentedControlNoSegment];
+    [self.view addSubview:segmentedControl4];
 }
 
 - (void)segmentedControlChangedValue:(HMSegmentedControl *)segmentedControl {
