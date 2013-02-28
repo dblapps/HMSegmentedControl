@@ -236,7 +236,7 @@
 			segment = touchLocation.x / self.segmentWidth;
 		}
         
-        if (segment != self.selectedSegmentIndex) {
+        if ((segment != self.selectedSegmentIndex) && (segment < self.sectionTitles.count)) {
             [self setSelectedSegmentIndex:segment animated:YES];
         }
     }
